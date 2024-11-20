@@ -79,5 +79,4 @@ yum install lustre
 modprobe lustre || echo "WARNING: failed to load lustre module."
 lfs --version || echo "WARNING: failed to check Lustre version."
 
-echo "Congratulations, you have install Lustre!"
-
+echo "Congratulations, you have installed Whamlinux Lustre kernel and its modules!"
