@@ -2,7 +2,7 @@
 
 guest=$1
 
-if [ -z "$host" ]; then
+if [ -z "$guest" ]; then
   echo "$0 needs guest hostname to configure it"
   exit 1
 fi
