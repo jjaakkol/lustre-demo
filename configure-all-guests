@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo "This script configures all lustre-demo VM:s to latest settings git pulled from lustre-demo git repository"
+
+while read ip guest; do
+  ssh root@$ip "uname -r; cd /root/lustre-demo && { git pull && ./configure-guest.sh $guest ;}" < /dev/null
+done < vm-hosts
