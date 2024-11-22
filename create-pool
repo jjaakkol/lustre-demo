@@ -1,12 +1,19 @@
 #!/bin/bash
 pool=lustre-demo
+pooldir=$PWD/pool
+
+if [ ! -f $PWD/pool/README.md ]; then
+  echo "Please run $0 in the git repository directory."
+  exit 1
+fi
+
 echo "Creating pool $pool in $PWD"
 
-virsh pool-create-as --name $pool --type dir --target $PWD
+virsh pool-create-as --name $pool --type dir --target $pooldir
 
 echo "Creating SSD MDT disks"
-for disk in SSD{0..5}; do virsh vol-create-as --name $disk --pool $pool --format qcow2 --capacity 25G; done
+for disk in SSD{0..5}; do virsh vol-create-as --name $disk.qcow2 --pool $pool --format qcow2 --capacity 25G; done
 
 echo "Creating HDD OST disks"
-for disk in HDD{0..7}; do virsh vol-create-as --name $disk --pool $pool --format qcow2 --capacity 50G; done
+for disk in HDD{0..7}; do virsh vol-create-as --name $disk.qcow2 --pool $pool --format qcow2 --capacity 50G; done
 
