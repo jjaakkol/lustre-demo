@@ -11,9 +11,28 @@ echo "Creating pool $pool in $PWD"
 
 virsh pool-create-as --name $pool --type dir --target $pooldir
 
+# qcow2 image can't be shared, so we use raw disk images.
 echo "Creating SSD MDT disks"
-for disk in SSD{0..5}; do virsh vol-create-as --name $disk.qcow2 --pool $pool --format qcow2 --capacity 25G; done
+for disk in SSD{0..5}; do virsh vol-create-as --name $disk.img --pool $pool --format raw --capacity 25G; done
 
 echo "Creating HDD OST disks"
-for disk in HDD{0..7}; do virsh vol-create-as --name $disk.qcow2 --pool $pool --format qcow2 --capacity 50G; done
+for disk in HDD{0..7}; do virsh vol-create-as --name $disk.img --pool $pool --format raw --capacity 50G; done
+
+for guest in lustre-demo-mds0 lustre-demo-mds1; do
+  virsh attach-disk $guest $pooldir/SSD0.img --persistent --shareable --type disk --target vdb
+  virsh attach-disk $guest $pooldir/SSD1.img --persistent --shareable --type disk --target vdc
+  virsh attach-disk $guest $pooldir/SSD2.img --persistent --shareable --type disk --target vdd
+  virsh attach-disk $guest $pooldir/SSD3.img --persistent --shareable --type disk --target vde
+  virsh attach-disk $guest $pooldir/SSD4.img --persistent --shareable --type disk --target vdf
+  virsh attach-disk $guest $pooldir/SSD5.img --persistent --shareable --type disk --target vdg
+done
+
+for guest in lustre-demo-oss0 lustre-demo-oss1; do
+  virsh attach-disk $guest $pooldir/HDD0.img --persistent --shareable --type disk --target vdb
+  virsh attach-disk $guest $pooldir/HDD1.img --persistent --shareable --type disk --target vdc
+  virsh attach-disk $guest $pooldir/HDD2.img --persistent --shareable --type disk --target vdd
+  virsh attach-disk $guest $pooldir/HDD3.img --persistent --shareable --type disk --target vde
+  virsh attach-disk $guest $pooldir/HDD4.img --persistent --shareable --type disk --target vdf
+  virsh attach-disk $guest $pooldir/HDD5.img --persistent --shareable --type disk --target vdg
+done
 
