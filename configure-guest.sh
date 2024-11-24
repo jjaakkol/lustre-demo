@@ -11,5 +11,7 @@ echo "Configuring guest $(uname -r) as $guest"
 hostnamectl set-hostname $guest
 cp -v etc-issue /etc/issue
 cp -va known_hosts /etc/ssh/ssh_known_hosts
+rm /etc/machine-id
+systemd-machine-id-setup
 #rm -f /root/.bash_history
 
