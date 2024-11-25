@@ -1,0 +1,30 @@
+#!/bin/bash
+testdirs=2
+files=50
+
+dirs=$(eval echo testdir{1..$testdirs})
+mkdir -p $dirs
+
+start=$(date +%s)
+echo "Creating $files files and directories in $testdirs threads in directories: $dirs"
+for dir in $dirs; do (
+	cd $dir || exit 1
+	for i in $(seq 1 $files); do
+		mkdir -p dir-$i
+		dd if=/dev/urandom bs=8k count=1 of=dir-$i/file-$i 2>/dev/null
+		echo -n .
+	done ) &
+done
+for dir in $dirs; do
+	wait
+done
+sync
+echo -e "\nRemoving created files and directories in $testdirs threads:"
+for dir in $dirs; do
+	rm -rf $dir/* &
+done
+for dir in $dirs; do
+	wait
+done
+sync
+echo "done. Time elapset $(( $(date +%s) - $start )) seconds."
