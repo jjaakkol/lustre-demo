@@ -8,8 +8,6 @@ Internet, anymore than you would expose your Lustre servers.
 When you have started all the VMs you can check that they have requested a IP address from the DHCP server at lustre-demo virtual network:
 
 
-virsh net-dhcp-leases lustre-demo
-
 ```
 $ virsh net-dhcp-leases lustre-demo
  Expiry Time           MAC address         Protocol   IP address          Hostname             Client ID or DUID
@@ -32,9 +30,9 @@ Last login: Mon Nov 25 02:06:14 2024 from 192.168.234.1
 [root@lustre-demo-mds0 ~]# 
 ```
 
-You are now free to play around in the vm. Command `lshw` list all virtual devices in the VM.
+You are now free to play around in the vm. Use command `lshw` list all virtual devices in the VM.
 
-Lustre servers need a hole in the firewall. Lustre port is 988:
+Lustre servers need a hole in the firewall. This commands adds a rule to allow TCP connections to Lustre port is 988 from `lustre-demo`virtual network:
 
 ```
 [root@lustre-demo-mds0 ~]# systemctl start firewalld
@@ -67,14 +65,14 @@ ping:
 
 You should check that `lnetctl ping` works to all Lustre VMs.
 
-Here is a list of all VMs and their IPs and nids in the default VM installation:
+Here is a list of all VMs and their IPs and Lnet nids in the default VM installation:
 
 | VM   | IP            | NID                | Description               |
 |------|---------------|--------------------|---------------------------|
-| lustre-demo-mds0  | 192.168.234.10  | 192.168.234.10@tcp  | Metadata server mds0 and MGT   |
+| lustre-demo-mds0  | 192.168.234.10  | 192.168.234.10@tcp  | Metadata server mds0 and MGS  |
 | lustre-demo-mds1  | 192.168.234.11  | 192.168.234.11@tcp  | Metadata server mds1 |
-| lustre-demo-oss0  | 192.168.234.20  | 192.168.234.20@tcp  | Payload data server OST0         |
-| lustre-demo-oss1  | 192.168.234.21  | 192.168.234.21@tcp  | Payload data server OST1  |
+| lustre-demo-oss0  | 192.168.234.20  | 192.168.234.20@tcp  | Payload data server oss0         |
+| lustre-demo-oss1  | 192.168.234.21  | 192.168.234.21@tcp  | Payload data server oss1  |
 | lustre-demo-client| 192.168.234.2   | 192.168.234.2@tcp   | Lustre client VM   |
 
 
@@ -89,7 +87,7 @@ Throughput and IOPS of the virtual disks is intentionally very low to be better 
 1.00GiB 0:00:20 [50.2MiB/s] [======================================================================>] 100%            
 ```
 
-Create raidz1 zpools for our two Lustre metadata servers (MDS). The zpool property `multihost=on` enables safe zpool sharing between multiple hosts. The zpool property `cachefile=none`turns of automatical zpool import on host restart.
+Create raidz1 zpools for our two Lustre metadata servers (MDS). The zpool property `multihost=on` enables safe zpool sharing between multiple hosts. The zpool property `cachefile=none`turns off automatical zpool import on host restart.
 
 ```
 modprobe zfs
@@ -97,9 +95,10 @@ zpool create MDT0 -o multihost=on -o cachefile=none raidz1 /dev/vdb /dev/vdc /de
 zpool create MDT1 -o multihost=on -o cachefile=none raidz1 /dev/vde /dev/vdf /dev/vdg
 ```
 
-Since the created zpool has three disks, where one disk is used for parity data, it has twice the throughput of a single disk. Lets test this with writing to a new ZFS dataset. We need to write enough data (8G) to fill the ARC, otherwise we just measure write cache speed. 
+Since the created zpool has three disks, where one disk is used for parity data, it has twice the throughput of a single disk. Lets test this with creating a new ZFS dataset `test` and writing to it. We need to write enough data (8G) to fill the ARC, otherwise we just measure write cache speed. 
 
 ```
+[root@lustre-demo-mds0 ~]# zfs create MDT0/test -o recordsize=1M
 [root@lustre-demo-mds0 ~]# openssl aes256 -pass pass:foo < /dev/zero | pv -s 8G -S > /MDT0/test/testfile 
 *** WARNING : deprecated key derivation used.
 Using -iter or -pbkdf2 would be better.
@@ -109,7 +108,7 @@ error writing output file
 ```
 
 
-Use these commands to create Lustre Management Target (MGT) and Lustre metadata target MDT0 and second metadata target MDT1:
+Format Lustre Management Target (MGT) and Lustre metadata target MDT0 and second metadata target MDT1 on the `lustre-demo-mds0` node:
 
 ```
 mkfs.lustre --mgs --servicenode=192.168.234.10@tcp --servicenode=192.168.234.11@tcp --backfstype=zfs MDT0/MGT
