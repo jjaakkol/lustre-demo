@@ -37,6 +37,9 @@ setup-guest() {
   virsh attach-disk $name-$1 $PWD/pool/$name-$1.qcow2 --persistent --type disk --target vda --driver qemu --subdriver qcow2
 }
 
+echo "Downloading lustre-demo Almalinux 8 Linux image..."
+( cd pool && wget --continue https://www.cs.helsinki.fi/u/jjaakkol/lustre-demo-orig.qcow2 )
+
 setup-network
 for guest in client mds0 mds1 oss0 oss1; do
   setup-guest $guest
