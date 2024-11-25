@@ -1,0 +1,15 @@
+#!/bin/bash
+
+prefix=234
+name=lustre-demo
+
+echo "This script destroys the networks and removes the disk files setup by setup-lustre-demo script"
+
+for guest in client mds0 mds1 oss0 oss1; do
+  virsh destroy $name-$guest
+  virsh undefine $name-$guest --nvram
+  rm -v -f pool/$name-$guest.qcow2
+done
+
+virsh net-undefine $name-$prefix
+
