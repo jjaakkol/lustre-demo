@@ -1,0 +1,56 @@
+#!/bin/bash
+
+prefix=234
+name=lustre-demo
+
+
+setup-network() {
+cat > libvirt/network-$prefix.xml << EOF
+<network>
+  <name>lustre-demo-$prefix</name>
+  <forward mode='nat'>
+    <nat>
+      <port start='1024' end='65535'/>
+    </nat>
+  </forward>
+  <bridge name='virbr$prefix' stp='on' delay='0'/>
+  <domain name='local' localOnly='yes'/>
+  <ip address='192.168.$prefix.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.$prefix.2' end='192.168.$prefix.254'/>
+      <host mac='52:54:00:a7:29:6c' name='$name-mds0' ip='192.168.$prefix.10'/>
+      <host mac='52:54:00:e5:b1:6a' name='$name-mds1' ip='192.168.$prefix.11'/>
+      <host mac='52:54:00:0e:8d:29' name='$name-oss0' ip='192.168.$prefix.20'/>
+      <host mac='52:54:00:85:f0:ae' name='$name-oss1' ip='192.168.$prefix.21'/>
+      <host mac='52:54:00:f9:c2:18' name='$name-client' ip='192.168.$prefix.2'/>
+    </dhcp>
+  </ip>
+</network>
+EOF
+  virsh net-define libvirt/network-$prefix.xml
+  virsh net-start lustre-demo-$prefix
+}
+
+setup-guest() {
+  virsh define libvirt/lustre-demo-$1.xml
+  ( cd pool && qemu-img create -f qcow2 -F qcow2 -b lustre-demo-orig.qcow2 $name-$1.qcow2 )
+  virsh attach-disk $name-$1 $PWD/pool/$name-$1.qcow2 --persistent --type disk --target vda --driver qemu --subdriver qcow2
+}
+
+setup-network
+for guest in client mds0 mds1 oss0 oss1; do
+  setup-guest $guest
+done
+
+for guest in client mds0 mds1 oss0 oss1; do
+  virsh start $name-$guest
+done
+
+while read ip name; do
+  echo "Waiting for $name at $ip to come up"
+  while ! ssh -o "ConnectTimeout=1" -i ./id_rsa root@$ip   ssh root@$ip "uptime; cd /root/lustre-demo && { git pull && ./configure-guest.sh $name ;}" < /dev/null
+  do
+    echo -n "."
+  done
+done < vm-hosts
+
