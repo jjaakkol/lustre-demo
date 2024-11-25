@@ -1,5 +1,6 @@
 <domain type='kvm'>
   <name>lustre-demo-client</name>
+  <uuid>2af37048-7f60-4b87-8b56-82f83fe12fba</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
       <libosinfo:os id="http://almalinux.org/almalinux/8"/>
@@ -133,7 +134,8 @@
       <address type='pci' domain='0x0000' bus='0x04' slot='0x00' function='0x0'/>
     </controller>
     <interface type='network'>
-      <source network='default'/>
+      <mac address='52:54:00:f9:c2:18'/>
+      <source network='lustre-demo'/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
     </interface>
