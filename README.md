@@ -222,8 +222,97 @@ error writing output file
 
 The same test run twice as fast, because we were using also the second storage target. Lustre throughput can scale linearly with the number of storage targets! Note that Lustre IO isn't synchronous. The actual max throughput is 60MB/s. The last bits were just left in write cache. 
 
-Things to test:
+Lets test Lustre metadata performance with a very simple shell script `simple-metadata-test`:
+
+```
+[root@lustre-demo-client demo]# cd /mnt/demo/
+[root@lustre-demo-client demo]# /root/lustre-demo/simple-metadata-test 
+Creating 50 files and directories in 2 threads in directories: testdir1 testdir2
+....................................................................................................
+Removing created files and directories in 2 threads:
+done. Time elapset 37 seconds.
+[root@lustre-demo-client demo]# 
+```
+
+Configure Lustre to save small files to MDT insteast of slow OST:
+
+```
+[root@lustre-demo-client demo]# lfs setstripe -E 64k --layout mdt -E eof --stripe-count -1  --stripe-size=1M testdir1 testdir2
+[root@lustre-demo-client demo]# lfs getstripe testdir1
+testdir1
+  lcm_layout_gen:    0
+  lcm_mirror_count:  1
+  lcm_entry_count:   2
+    lcme_id:             N/A
+    lcme_mirror_id:      N/A
+    lcme_flags:          0
+    lcme_extent.e_start: 0
+    lcme_extent.e_end:   65536
+      stripe_count:  0       stripe_size:   65536       pattern:       mdt       stripe_offset: -1
+
+    lcme_id:             N/A
+    lcme_mirror_id:      N/A
+    lcme_flags:          0
+    lcme_extent.e_start: 65536
+    lcme_extent.e_end:   EOF
+      stripe_count:  -1       stripe_size:   1048576       pattern:       raid0       stripe_offset: -1
+
+[root@lustre-demo-client demo]# 
+```
+
+Now run the metadata test again with Data-on-MDT (DOM):
+```
+[root@lustre-demo-client demo]# /root/lustre-demo/simple-metadata-test 
+Creating 50 files and directories in 2 threads in directories: testdir1 testdir2
+....................................................................................................
+Removing created files and directories in 2 threads:
+done. Time elapset 36 seconds.
+[root@lustre-demo-client demo]# /root/lustre-demo/simple-metadata-test 
+Creating 50 files and directories in 2 threads in directories: testdir1 testdir2
+....................................................................................................
+Removing created files and directories in 2 threads:
+done. Time elapset 30 seconds.
+[root@lustre-demo-client demo]# 
+```
+
+One more thing to test. Configure all IO to testdir1 to go to MDT0 and all IO to destdir2 to go to MDT1:
+
+```
+[root@lustre-demo-client demo]# lfs setdirstripe -D --mdt-index 0 testdir1
+[root@lustre-demo-client demo]# lfs setdirstripe -D --mdt-index 1 testdir2
+[root@lustre-demo-client demo]# lfs getdirstripe -D testdir1 testdir2
+lmv_stripe_count: 0 lmv_stripe_offset: 0 lmv_hash_type: none lmv_max_inherit: 3
+lmv_stripe_count: 0 lmv_stripe_offset: 1 lmv_hash_type: none lmv_max_inherit: 3
+[root@lustre-demo-client demo]# 
+```
+
+Now run the test. The second metadata test takes only 0 seconds! Can you explain what happens here?
+
+```
+[root@lustre-demo-client demo]# lfs getdirstripe testdir1 testdir2
+lmv_stripe_count: 0 lmv_stripe_offset: 1 lmv_hash_type: none
+lmv_stripe_count: 0 lmv_stripe_offset: 0 lmv_hash_type: none
+[root@lustre-demo-client demo]# lfs setdirstripe -D --mdt-index 0 testdir1
+[root@lustre-demo-client demo]# lfs setdirstripe -D --mdt-index 1 testdir2
+[root@lustre-demo-client demo]# /root/lustre-demo/simple-metadata-test 
+Creating 50 files and directories in 2 threads in directories: testdir1 testdir2
+....................................................................................................
+Removing created files and directories in 2 threads:
+done. Time elapset 72 seconds.
+[root@lustre-demo-client demo]# lfs setdirstripe -D --mdt-index 1 testdir1
+[root@lustre-demo-client demo]# lfs setdirstripe -D --mdt-index 0 testdir2
+[root@lustre-demo-client demo]# /root/lustre-demo/simple-metadata-test 
+Creating 50 files and directories in 2 threads in directories: testdir1 testdir2
+....................................................................................................
+Removing created files and directories in 2 threads:
+done. Time elapset 0 seconds.
+[root@lustre-demo-client demo]# 
+```
+
+More things to test:
 
 - Create more users
 - Check Lustre quotas
-- Test metadata throughput.
+- Swap Lustre to another server
+- Install High Availability server
+
