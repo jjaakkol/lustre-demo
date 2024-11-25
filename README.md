@@ -30,3 +30,11 @@ mount MDT1/MDT1 /mnt/MDT1 -t lustre
 mount MDT0/MDT0 /mnt/MDT0 -t lustre
 
 dmesg
+modprobe zfs
+zpool create OST0 -o multihost=on -o cachefile=none raidz1 /dev/vdb /dev/vdc /dev/vdd
+zpool create OST1 -o multihost=on -o cachefile=none raidz1 /dev/vde /dev/vdf /dev/vdg
+mkfs.lustre --ost --fsname=demo --mgsnode 192.168.234.10@tcp:192.168.234.11@tcp --index=1 --backfstype=zfs --servicenode=192.168.234.20@tcp --servicenode=192.168.234.21@tcp OST0/OST0
+mkfs.lustre --ost --fsname=demo --mgsnode 192.168.234.10@tcp:192.168.234.11@tcp --index=0 --backfstype=zfs --servicenode=192.168.234.20@tcp --servicenode=192.168.234.21@tcp OST0/OST0
+mkdir -p /mnt/OST0 /mnt/OST1
+mkfs.lustre --ost --fsname=demo --mgsnode 192.168.234.10@tcp:192.168.234.11@tcp --index=1 --backfstype=zfs --servicenode=192.168.234.20@tcp --servicenode=192.168.234.21@tcp OST1/OST1
+mount -t lustre OST1/OST1 /mnt/OST1
