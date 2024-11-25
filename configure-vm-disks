@@ -39,14 +39,14 @@ done
 echo "Setting IO rate limits for virtual SSDs"
 for guest in lustre-demo-mds0 lustre-demo-mds1; do
   for dev in vd{b..g}; do
-    virsh blkdeviotune $guest $dev --total-iops-sec 100 --total-bytes-sec 50M --config --live
+    virsh blkdeviotune $guest $dev --total-iops-sec 200 --total-bytes-sec 50M --config --live
   done
 done
 
 echo "Setting IO rate limits for virtual HDDs"
 for guest in lustre-demo-oss0 lustre-demo-oss1; do
   for dev in vd{b..g}; do
-    virsh blkdeviotune $guest $dev --total-iops-sec 25 --total-bytes-sec 10M --config --live
+    virsh blkdeviotune $guest $dev --total-iops-sec 50 --total-bytes-sec 10M --config --live
   done
 done
 
