@@ -6,6 +6,9 @@ the virtual machines. Do not expose these virtual machines to the public
 Internet, anymore than you would expose your Lustre servers.
 
 
+## Table of contents
+
+- [Table of contents](#table-of-contents)
 - [Startup](#startup)
 - [Verify your virtual network](#verify-your-virtual-network)
 - [Fast and slow virtual Lustre disks](#fast-and-slow-virtual-lustre-disks)
