@@ -5,6 +5,20 @@ The id_rsa secret key is here on purpose. You use it to login as root to
 the virtual machines. Do not expose these virtual machines to the public
 Internet, anymore than you would expose your Lustre servers.
 
+
+- [Startup](#startup)
+- [Verify your virtual network](#verify-your-virtual-network)
+- [Fast and slow virtual Lustre disks](#fast-and-slow-virtual-lustre-disks)
+- [Creating and testing fast MDT zpools](#creating-and-testing-fast-mdt-zpools)
+- [Format Lustre MGT and MGT targets](#format-lustre-mgt-and-mgt-targets)
+- [Create OST zpools and format Lustre OST targets](#create-ost-zpools-and-format-lustre-ost-targets)
+- [Mount the Lustre filesystem to client](#mount-the-lustre-filesystem-to-client)
+- [Testing throughput performance](#testing-throughput-performance)
+- [Testing metadata performance](#testing-metadata-performance)
+  - [Add another MDT:](#add-another-mdt)
+- [Test Lustre server migration](#test-lustre-server-migration)
+- [TODO list](#todo-list)
+
 ## Startup
 
 ## Verify your virtual network
