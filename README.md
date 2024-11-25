@@ -38,3 +38,8 @@ mkfs.lustre --ost --fsname=demo --mgsnode 192.168.234.10@tcp:192.168.234.11@tcp 
 mkdir -p /mnt/OST0 /mnt/OST1
 mkfs.lustre --ost --fsname=demo --mgsnode 192.168.234.10@tcp:192.168.234.11@tcp --index=1 --backfstype=zfs --servicenode=192.168.234.20@tcp --servicenode=192.168.234.21@tcp OST1/OST1
 mount -t lustre OST1/OST1 /mnt/OST1
+lnetctl ping 192.168.234.11@tcp
+mkdir -p demo /mnt/demo
+mount -t lustre 192.168.234.10@tcp:192.168.234.11@tcp:/demo /mnt/demo
+lfs setstripe -c -1 testdir
+lfs getstripe testfile
