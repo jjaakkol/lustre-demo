@@ -78,9 +78,11 @@ Here is a list of all VMs and their IPs and Lnet nids in the default VM installa
 
 You can also now check the hardware of the VM and play with the virtual disks. You list the disks and their metadata with commands `blkid` or `lsblk`.
 
-There is 6 "SSD" shared virtual disks with 50MB/s max throughput shared between `lustre-demo-mds0` and `lustre-demo-mds1` nodes and 6 "HDD" shared virtual disks with 25MB/s max throughput shared between `lustre-demo-oss0' and 'lustre-demo-oss1'. 
+There is 6 "fast SSD" shared virtual disks with 50MB/s max throughput shared between `lustre-demo-mds0` and `lustre-demo-mds1` nodes and 6 "slow HDD" shared virtual disks with 10MB/s max throughput shared between `lustre-demo-oss0' and 'lustre-demo-oss1'. 
 
-Throughput and IOPS of the virtual disks is intentionally very low to be better able to demonstrate how Lustre achieves performance by distribution IO over multiple disks and hosts. The MDS disks have max throughput of 50MB/s by default:
+Throughput and IOPS of the virtual disks is intentionally very low to be better able to demonstrate how Lustre achieves performance by distribution IO over multiple disks and hosts.
+
+In this demo we use command 'pv' to measure simple throughput. In real environment you would need to run 'fio' or 'ior' to measure throughput, since single threaded software won't be enough. 
 
 ```
 [root@lustre-demo-mds0 ~]# pv -s 1G -S /dev/vdc > /dev/null
@@ -376,6 +378,159 @@ Removing created files and directories in 2 threads:
 done. Time elapset 77 seconds.
 [root@lustre-demo-client demo]# 
 ```
+
+We are not curently using lustre-demo-mds1 and lustre-demo-oss1 servers at all. Now will demonstrate how Lustre
+services can move from one node to another.  Let's move MDT1 to mds1 and OST1 to oss1.
+
+First lets start some IO in 'lustre-demo-client'.
+
+```
+[root@lustre-demo-client stripeddir]# while true; do openssl aes256 -pass pass:foo < /dev/zero | pv -s 4G -S > testfile; done
+*** WARNING : deprecated key derivation used.
+Using -iter or -pbkdf2 would be better.
+2.53GiB 0:00:14 [ 159MiB/s] [==========================================================================>                                             ] 63% ETA 0:00:08
+
+```
+
+Unmount the Lustre MDT1 and use zpool export the zpool:
+
+```
+[root@lustre-demo-mds0 ~]# umount /mnt/MDT1
+[root@lustre-demo-mds0 ~]# zpool export MDT1
+```
+
+Now zpool import the pool to mds1 and start Lustre service by mounting MDT1:
+
+```
+[root@lustre-demo-mds1 ~]# modprobe zfs
+[root@lustre-demo-mds1 ~]# zpool import
+   pool: MDT1
+     id: 11479827352955622846
+  state: DEGRADED
+status: One or more devices contains corrupted data.
+ action: The pool can be imported despite missing or damaged devices.  The
+	fault tolerance of the pool may be compromised if imported.
+   see: https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-4J
+ config:
+
+	MDT1        DEGRADED
+	  raidz1-0  DEGRADED
+	    vde     FAULTED  corrupted data
+	    vdf     ONLINE
+	    vdg     ONLINE
+
+   pool: MDT0
+     id: 5181130069692359376
+  state: UNAVAIL
+status: The pool is currently imported by another system.
+ action: The pool must be exported from lustre-demo-mds0 (hostid=54debfc8)
+	before it can be safely imported.
+   see: https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-EY
+ config:
+
+	MDT0        UNAVAIL  currently in use
+	  raidz1-0  ONLINE
+	    vdb     ONLINE
+	    vde     ONLINE
+	    vdc     ONLINE
+[root@lustre-demo-mds1 ~]# zpool import MDT1
+```
+
+Perhaps because of careless VM settings by me, one of the pools is already corrupted. We can run `zpool replace` to fix it, since it has raidz1 redundancy:
+
+```
+[root@lustre-demo-mds1 ~]# zpool replace -f MDT1 /dev/vde
+[root@lustre-demo-mds1 ~]# zpool status -v
+  pool: MDT1
+ state: DEGRADED
+status: One or more devices is currently being resilvered.  The pool will
+	continue to function, possibly in a degraded state.
+action: Wait for the resilver to complete.
+  scan: resilver in progress since Mon Nov 25 08:38:18 2024
+	9.80M scanned at 0B/s, 6.18M issued at 1.22M/s, 9.80M total
+	2.08M resilvered, 63.11% done, no estimated completion time
+config:
+
+	NAME                       STATE     READ WRITE CKSUM
+	MDT1                       DEGRADED     0     0     0
+	  raidz1-0                 DEGRADED     0     0     0
+	    replacing-0            DEGRADED     0     0     0
+	      7198113008837021926  UNAVAIL      0     0     0  was /dev/vde1/old
+	      vde                  ONLINE       0     0     0  (resilvering)
+	    vdf                    ONLINE       0     0     0
+	    vdg                    ONLINE       0     0     0
+
+errors: No known data errors
+[root@lustre-demo-mds1 ~]# 
+
+```
+
+And soon:
+
+```
+[root@lustre-demo-mds1 ~]# zpool status -v
+  pool: MDT1
+ state: ONLINE
+  scan: resilvered 6.20M in 00:00:13 with 0 errors on Mon Nov 25 08:38:31 2024
+config:
+
+	NAME        STATE     READ WRITE CKSUM
+	MDT1        ONLINE       0     0     0
+	  raidz1-0  ONLINE       0     0     0
+	    vde     ONLINE       0     0     0
+	    vdf     ONLINE       0     0     0
+	    vdg     ONLINE       0     0     0
+
+errors: No known data errors
+[root@lustre-demo-mds1 ~]# 
+```
+
+Bring the MDT1 service back online:
+
+```
+[root@lustre-demo-mds1 ~]# mkdir /mnt/MDT1
+[root@lustre-demo-mds1 ~]# mount -t lustre MDT1/MDT1 /mnt/MDT1
+```
+
+After Lustre recovery IO should continue as usual in `lustre-demo-client`
+
+```
+[root@lustre-demo-client ~]# dmesg|tail -2
+[368009.462715] Lustre: demo-MDT0001-mdc-ffff91716cfe2800: Connection restored to 192.168.234.11@tcp (at 192.168.234.11@tcp)
+[368009.462860] Lustre: Skipped 1 previous similar message
+[root@lustre-demo-client ~]# lfs df
+UUID                   1K-blocks        Used   Available Use% Mounted on
+demo-MDT0000_UUID       41694464        5120    41687296   1% /mnt/demo[MDT:0]
+demo-MDT0001_UUID       50017920        5120    50010752   1% /mnt/demo[MDT:1]
+demo-MDT0002_UUID       41693312        3968    41687296   1% /mnt/demo[MDT:2]
+demo-OST0000_UUID       95880192     5791744    86894592   7% /mnt/demo[OST:0]
+demo-OST0001_UUID      100038656     1596416    95243264   2% /mnt/demo[OST:1]
+
+filesystem_summary:    195918848     7388160   182137856   4% /mnt/demo
+
+[root@lustre-demo-client ~]# 
+```
+
+Now do the same move OST1:
+
+```
+[root@lustre-demo-oss0 ~]# umount /mnt/OST1
+[root@lustre-demo-oss0 ~]# zpool export OST1
+
+[root@lustre-demo-oss1 ~]# zpool import OST1
+[root@lustre-demo-oss1 ~]# mkdir /mnt/OST1
+[root@lustre-demo-oss1 ~]# mount -t lustre OST1/OST1 /mnt/OST1
+```
+
+After brief recovery period IO in the lustre client should continue. You are likely to see "blocked for more than 120s" error messages in kernel log, since processes trying to access Lustre shares will be hung while the Lustre servers are unavailable.
+
+```
+[368518.099966] INFO: task openssl:16279 blocked for more than 120 seconds.
+[368518.099988]       Tainted: P           OE     -------- -  - 4.18.0-553.5.1.el8_lustre.x86_64 #1
+[368518.100000] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+```
+
+
 
 More things to test:
 
