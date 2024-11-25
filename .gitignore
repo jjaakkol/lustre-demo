@@ -1,2 +1,4 @@
 pool/*.img
+pool/*.qcow2
+
 
