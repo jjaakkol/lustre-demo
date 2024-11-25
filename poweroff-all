@@ -1,0 +1,10 @@
+#!/bin/bash
+
+echo "This script powers off Lustre VMs nicely, assumig there is nobody accessing them."
+
+echo "Shutting down client first"
+ssh -o "ConnectTimeout 2"  root@192.168.234.2 'fuser -k -m /mnt/demo && umount -a -t lustre && lustre_rmmod && poweroff'
+
+for ip in 192.168.234.21 192.168.234.20 192.168.234.11 192.168.214.10; do
+  ssh -o "ConnectTimeout 2" root@$ip "uname -n; umount -a -t lustre && zpool export -a && lustre_rmmod && poweroff" < /dev/null
+done
