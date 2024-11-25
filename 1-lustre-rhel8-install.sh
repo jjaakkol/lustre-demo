@@ -79,4 +79,7 @@ yum install lustre
 modprobe lustre || echo "WARNING: failed to load lustre module."
 lfs --version || echo "WARNING: failed to check Lustre version."
 
+echo "STEP 6: Install high availability utilities"
+yum install lustre-resource-agents corosync pacemaker pcs
+
 echo "Congratulations, you have installed Whamlinux Lustre kernel and its modules!"
