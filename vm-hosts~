@@ -1,0 +1,5 @@
+lustre-demo-client 192.168.234.2
+lustre-demo-mds0 192.168.234.10
+lustre-demo-mds1 192.168.234.11
+lustre-demo-oss0 192.168.234.21
+lustre-demo-oss1 192.168.234.22
