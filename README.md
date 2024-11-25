@@ -309,6 +309,74 @@ done. Time elapset 0 seconds.
 [root@lustre-demo-client demo]# 
 ```
 
+Lets create and mount a new MDT3:
+
+```
+[root@lustre-demo-mds0 ~]# mkfs.lustre --mdt --fsname=demo --mgsnode 192.168.234.10@tcp:192.168.234.11@tcp --index=2 --backfstype=zfs --servicenode=192.168.234.10@tcp --servicenode=192.168.234.11@tcp  MDT0/MDT2
+
+   Permanent disk data:
+Target:     demo:MDT0002
+Index:      2
+Lustre FS:  demo
+Mount type: zfs
+Flags:      0x1061
+              (MDT first_time update no_primnode )
+Persistent mount opts: 
+Parameters: mgsnode=192.168.234.10@tcp:192.168.234.11@tcp  failover.node=192.168.234.10@tcp:192.168.234.11@tcp
+checking for existing Lustre data: not found
+mkfs_cmd = zfs create -o canmount=off  MDT0/MDT2
+  xattr=sa
+  dnodesize=auto
+Writing MDT0/MDT2 properties
+  lustre:mgsnode=192.168.234.10@tcp:192.168.234.11@tcp
+  lustre:failover.node=192.168.234.10@tcp:192.168.234.11@tcp
+  lustre:version=1
+  lustre:flags=4193
+  lustre:index=2
+  lustre:fsname=demo
+  lustre:svname=demo:MDT0002
+[root@lustre-demo-mds0 ~]# mkdir /mnt/MDT2
+[root@lustre-demo-mds0 ~]# mount -t lustre MDT0/MDT2 /mnt/MDT2
+```
+
+It will immediately be visible in the client:
+
+```
+[root@lustre-demo-client ~]# lfs df
+UUID                   1K-blocks        Used   Available Use% Mounted on
+demo-MDT0000_UUID       41694848        6272    41686528   1% /mnt/demo[MDT:0]
+demo-MDT0001_UUID       50018176        6272    50009856   1% /mnt/demo[MDT:1]
+demo-MDT0002_UUID       41692160        3584    41686528   1% /mnt/demo[MDT:2]
+demo-OST0000_UUID       95880192     6290432    89587712   7% /mnt/demo[OST:0]
+demo-OST0001_UUID      100038656     2100224    97936384   3% /mnt/demo[OST:1]
+
+filesystem_summary:    195918848     8390656   187524096   5% /mnt/demo
+```
+
+It seems Lustre works much faster, when directories are created to the same MDT where parent directory is:
+
+```
+[root@lustre-demo-client demo]# lfs getdirstripe testdir1 testdir2
+lmv_stripe_count: 0 lmv_stripe_offset: 1 lmv_hash_type: none
+lmv_stripe_count: 0 lmv_stripe_offset: 2 lmv_hash_type: none
+[root@lustre-demo-client demo]# lfs getdirstripe -D testdir1 testdir2
+lmv_stripe_count: 0 lmv_stripe_offset: 1 lmv_hash_type: none lmv_max_inherit: 3
+lmv_stripe_count: 0 lmv_stripe_offset: 2 lmv_hash_type: none lmv_max_inherit: 3
+[root@lustre-demo-client demo]# /root/lustre-demo/simple-metadata-test 
+Creating 50 files and directories in 2 threads in directories: testdir1 testdir2
+....................................................................................................
+Removing created files and directories in 2 threads:
+done. Time elapset 2 seconds.
+[root@lustre-demo-client demo]# lfs setdirstripe -D --mdt-index 2 testdir1
+[root@lustre-demo-client demo]# lfs setdirstripe -D --mdt-index 1 testdir2
+[root@lustre-demo-client demo]# /root/lustre-demo/simple-metadata-test 
+Creating 50 files and directories in 2 threads in directories: testdir1 testdir2
+....................................................................................................
+Removing created files and directories in 2 threads:
+done. Time elapset 77 seconds.
+[root@lustre-demo-client demo]# 
+```
+
 More things to test:
 
 - Create more users
