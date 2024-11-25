@@ -5,6 +5,10 @@ The id_rsa secret key is here on purpose. You use it to login as root to
 the virtual machines. Do not expose these virtual machines to the public
 Internet, anymore than you would expose your Lustre servers.
 
+## Startup
+
+## Verify your virtual network
+
 When you have started all the VMs you can check that they have requested a IP address from the DHCP server at lustre-demo virtual network:
 
 
@@ -76,6 +80,8 @@ Here is a list of all VMs and their IPs and Lnet nids in the default VM installa
 | lustre-demo-client| 192.168.234.2   | 192.168.234.2@tcp   | Lustre client VM   |
 
 
+## Fast and slow virtual Lustre disks
+
 You can also now check the hardware of the VM and play with the virtual disks. You list the disks and their metadata with commands `blkid` or `lsblk`.
 
 There is 6 "fast SSD" shared virtual disks with 50MB/s max throughput shared between `lustre-demo-mds0` and `lustre-demo-mds1` nodes and 6 "slow HDD" shared virtual disks with 10MB/s max throughput shared between `lustre-demo-oss0' and 'lustre-demo-oss1'. 
@@ -88,6 +94,8 @@ In this demo we use command 'pv' to measure simple throughput. In real environme
 [root@lustre-demo-mds0 ~]# pv -s 1G -S /dev/vdc > /dev/null
 1.00GiB 0:00:20 [50.2MiB/s] [======================================================================>] 100%            
 ```
+
+## Creating and testing fast MDT zpools 
 
 Create raidz1 zpools for our two Lustre metadata servers (MDS). The zpool property `multihost=on` enables safe zpool sharing between multiple hosts. The zpool property `cachefile=none`turns off automatical zpool import on host restart.
 
@@ -109,6 +117,7 @@ error writing output file
 [root@lustre-demo-mds0 ~]#
 ```
 
+## Format Lustre MGT and MGT targets
 
 Format Lustre Management Target (MGT) and Lustre metadata target MDT0 and second metadata target MDT1 on the `lustre-demo-mds0` node:
 
@@ -141,6 +150,7 @@ mount MDT1/MDT1 /mnt/MDT1 -t lustre
 mount MDT0/MDT0 /mnt/MDT0 -t lustre
 ```
 
+## Create OST zpools and format Lustre OST targets
 
 Now ssh to the lustre-demo-oss0 Lustre payload data server (Object Storage Server OSS) and create Lustre OST target datasets:
 
@@ -168,6 +178,8 @@ mount -t lustre OST0/OST0 /mnt/OST0
 mount -t lustre OST1/OST1 /mnt/OST1
 ```
 
+## Mount the Lustre filesystem to client
+
 At this point the Lustre servers are running and we are ready to mount the Lustre filesystem to our client. Now ssh to the lustre-demo-client and mount the newly created Lustre filesystem:
 
 ```
@@ -175,7 +187,7 @@ mkdir -p demo /mnt/demo
 mount -t lustre 192.168.234.10@tcp:192.168.234.11@tcp:/demo /mnt/demo
 ```
 
-Now chech that all the Lustre server nodes are visible to the client:
+Now check that all the Lustre server nodes are visible to the client:
 
 ```
 [root@lustre-demo-client ~]# lfs df
@@ -189,6 +201,10 @@ filesystem_summary:    198745088     9206784   189534208   5% /mnt/demo
 
 [root@lustre-demo-client ~]# 
 ```
+
+Congratulations! You have successfully setup a working a Lustre system!
+
+## Testing throughput performance
 
 Now we can test the throughput of our Lustre system. In the default configuration you should get only 20MB/s, since we are only writing `testfile` to one of our two OST targets. Command 'lfs getstripe' gets the stripe layout of the generated file:
 
@@ -223,6 +239,8 @@ error writing output file
 ```
 
 The same test run twice as fast, because we were using also the second storage target. Lustre throughput can scale linearly with the number of storage targets! Note that Lustre IO isn't synchronous. The actual max throughput is 60MB/s. The last bits were just left in write cache. 
+
+## Testing metadata performance
 
 Lets test Lustre metadata performance with a very simple shell script `simple-metadata-test`:
 
@@ -311,7 +329,9 @@ done. Time elapset 0 seconds.
 [root@lustre-demo-client demo]# 
 ```
 
-Lets create and mount a new MDT3:
+### Add another MDT:
+
+Lets create and mount a new MDT2:
 
 ```
 [root@lustre-demo-mds0 ~]# mkfs.lustre --mdt --fsname=demo --mgsnode 192.168.234.10@tcp:192.168.234.11@tcp --index=2 --backfstype=zfs --servicenode=192.168.234.10@tcp --servicenode=192.168.234.11@tcp  MDT0/MDT2
@@ -378,6 +398,8 @@ Removing created files and directories in 2 threads:
 done. Time elapset 77 seconds.
 [root@lustre-demo-client demo]# 
 ```
+
+## Test Lustre server migration
 
 We are not curently using lustre-demo-mds1 and lustre-demo-oss1 servers at all. Now will demonstrate how Lustre
 services can move from one node to another.  Let's move MDT1 to mds1 and OST1 to oss1.
@@ -530,12 +552,11 @@ After brief recovery period IO in the lustre client should continue. You are lik
 [368518.100000] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
 ```
 
-
+## TODO list
 
 More things to test:
 
 - Create more users
 - Check Lustre quotas
-- Swap Lustre to another server
 - Install High Availability server
 
