@@ -1,4 +1,4 @@
-<network connections='5'>
+<network>
   <name>lustre-demo</name>
   <uuid>8033cae9-fd39-494e-b246-b4c6306bd53d</uuid>
   <forward mode='nat'>
