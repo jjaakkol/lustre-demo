@@ -13,5 +13,6 @@ cp -v etc-issue /etc/issue
 cp -va known_hosts /etc/ssh/ssh_known_hosts
 rm /etc/machine-id
 systemd-machine-id-setup
+genhostid
 #rm -f /root/.bash_history
 
