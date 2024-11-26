@@ -5,6 +5,7 @@ The id_rsa secret key is here on purpose. You use it to login as root to
 the virtual machines. Do not expose these virtual machines to the public
 Internet, anymore than you would expose your Lustre servers.
 
+Do not run random scripts you have found from network, without checking them first or knowing the author!
 
 ## Table of contents
 
@@ -22,12 +23,71 @@ Internet, anymore than you would expose your Lustre servers.
 - [Test Lustre server migration](#test-lustre-server-migration)
 - [TODO list](#todo-list)
 
-## Startup
+## Setup
 
-## Verify your virtual network
+Run script `setup-lustre-demo create` to download disk images and create the Lustre demo virtual machines.
 
-When you have started all the VMs you can check that they have requested a IP address from the DHCP server at lustre-demo virtual network:
+```
+~/git/lustre-demo$ ./setup-lustre-demo create
+Demo VM lustre-demo-orig.qcow2 already downloaded
+Setup network lustre-demo-234
+Setup VM lustre-demo-client
+Setup VM lustre-demo-mds0
+Setup VM lustre-demo-mds1
+Setup VM lustre-demo-oss0
+Setup VM lustre-demo-oss1
+```
 
+Run script `setup-lustre-demo start` to start and configure the VM's
+
+```
+/git/lustre-demo$ ./setup-lustre-demo start
+Starting network lustre-demo-234
+Starting guests
+Waiting for lustre-demo-client at 192.168.234.2 to come up
+..............Configuring 192.168.234.2
+Initializing machine ID from KVM UUID.
+Configured guest lustre-demo-client
+Waiting for lustre-demo-mds0 at 192.168.234.10 to come up
+Configuring 192.168.234.10
+Initializing machine ID from KVM UUID.
+Configured guest lustre-demo-mds0
+Waiting for lustre-demo-mds1 at 192.168.234.11 to come up
+Configuring 192.168.234.11
+Initializing machine ID from KVM UUID.
+Configured guest lustre-demo-mds1
+Waiting for lustre-demo-oss0 at 192.168.234.20 to come up
+Configuring 192.168.234.20
+Initializing machine ID from KVM UUID.
+Configured guest lustre-demo-oss0
+Waiting for lustre-demo-oss1 at 192.168.234.21 to come up
+...Configuring 192.168.234.21
+Initializing machine ID from KVM UUID.
+Configured guest lustre-demo-oss1
+```
+
+
+## Verify your setup
+
+When you have started all the VMs you can check that they are running and their DHCP leases with  `setup-lustre-demo status`:
+
+```
+~/git/lustre-demo$ ./setup-lustre-demo status
+ Id   Name                 State
+------------------------------------
+ 46   lustre-demo-client   running
+ 47   lustre-demo-mds0     running
+ 48   lustre-demo-mds1     running
+ 49   lustre-demo-oss0     running
+ 50   lustre-demo-oss1     running
+
+ Expiry Time           MAC address         Protocol   IP address          Hostname             Client ID or DUID
+---------------------------------------------------------------------------------------------------------------------
+ 2024-11-26 21:35:37   52:54:00:0e:8d:29   ipv4       192.168.234.20/24   lustre-demo-oss0     01:52:54:00:0e:8d:29
+ 2024-11-26 21:35:56   52:54:00:85:f0:ae   ipv4       192.168.234.21/24   lustre-demo-oss1     01:52:54:00:85:f0:ae
+ 2024-11-26 21:35:36   52:54:00:a7:29:6c   ipv4       192.168.234.10/24   lustre-demo-mds0     01:52:54:00:a7:29:6c
+ 2024-11-26 21:35:37   52:54:00:e5:b1:6a   ipv4       192.168.234.11/24   lustre-demo-mds1     01:52:54:00:e5:b1:6a
+ 2024-11-26 21:35:35   52:54:00:f9:c2:18   ipv4       192.168.234.2/24    lustre-demo-client   01:52:54:00:f9:c2:18
 
 ```
 $ virsh net-dhcp-leases lustre-demo
