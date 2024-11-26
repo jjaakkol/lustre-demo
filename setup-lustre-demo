@@ -34,10 +34,19 @@ EOF
 }
 
 setup-guest() {
-  echo "Setup VM $name-$1"
-  virsh --quiet define libvirt/lustre-demo-$1.xml
-  [ -f $pool/$name-$1.qcow2 ] || ( cd $pool && qemu-img create -q -f qcow2 -F qcow2 -b lustre-demo-orig.qcow2 $name-$1.qcow2 )
-  virsh --quiet attach-disk $name-$1 $pool/$name-$1.qcow2 --persistent --type disk --target vda --driver qemu --subdriver qcow2
+  while read mac name ip; do
+    echo "Setup $name $ip $mac"
+    mac=$mac name=$name memory=8096 subnet=$subnet ./libvirt/lustre-demo-guest.template > libvirt/$name.xml
+    virsh --quiet define libvirt/$name.xml
+    [ -f $pool/$name.qcow2 ] || ( cd $pool && qemu-img create -q -f qcow2 -F qcow2 -b lustre-demo-orig.qcow2 $name.qcow2 )
+    virsh --quiet attach-disk $name $pool/$name.qcow2 --persistent --type disk --target vda --driver qemu --subdriver qcow2
+  done << EOF
+52:54:00:a7:29:6c $name-mds0 192.168.$prefix.10
+52:54:00:e5:b1:6a $name-mds1 192.168.$prefix.11
+52:54:00:0e:8d:29 $name-oss0 192.168.$prefix.20
+52:54:00:85:f0:ae $name-oss1 192.168.$prefix.21
+52:54:00:f9:c2:18 $name-client 192.168.$prefix.2
+EOF
 }
 
 
@@ -55,9 +64,7 @@ download-image() {
 create() {
   download-image
   setup-network
-  for guest in client mds0 mds1 oss0 oss1; do
-    setup-guest $guest
-  done
+  setup-guest
 }
 
 
@@ -71,6 +78,7 @@ stop() {
 
 destroy() {
   for guest in client mds0 mds1 oss0 oss1; do
+    virsh --quiet undefine $name-$guest --nvram
     rm -vf $pool/$name-$guest.qcow2
   done
   virsh --quiet net-undefine $name-$prefix
@@ -100,7 +108,6 @@ start() {
 192.168.$prefix.20 lustre-demo-oss0
 192.168.$prefix.21 lustre-demo-oss1
 EOF
-
 }
 
 while true; do case $1 in
