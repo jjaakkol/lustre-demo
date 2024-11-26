@@ -1,13 +1,12 @@
 <domain type='kvm'>
   <name>lustre-demo-client</name>
-  <uuid>2af37048-7f60-4b87-8b56-82f83fe12fba</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
       <libosinfo:os id="http://almalinux.org/almalinux/8"/>
     </libosinfo:libosinfo>
   </metadata>
-  <memory unit='KiB'>8388608</memory>
-  <currentMemory unit='KiB'>8388608</currentMemory>
+  <memory unit='MiB'>8096</memory>
+  <currentMemory unit='MiB'>8096</currentMemory>
   <vcpu placement='static'>4</vcpu>
   <resource>
     <partition>/machine</partition>
@@ -185,4 +184,3 @@
   <seclabel type='dynamic' model='apparmor' relabel='yes'/>
   <seclabel type='dynamic' model='dac' relabel='yes'/>
 </domain>
-
