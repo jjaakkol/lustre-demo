@@ -90,15 +90,6 @@ When you have started all the VMs you can check that they are running and their 
  2024-11-26 21:35:35   52:54:00:f9:c2:18   ipv4       192.168.234.2/24    lustre-demo-client   01:52:54:00:f9:c2:18
 
 ```
-$ virsh net-dhcp-leases lustre-demo
- Expiry Time           MAC address         Protocol   IP address          Hostname             Client ID or DUID
----------------------------------------------------------------------------------------------------------------------
- 2024-11-25 09:50:07   52:54:00:0e:8d:29   ipv4       192.168.234.20/24   lustre-demo-oss0     01:52:54:00:0e:8d:29
- 2024-11-25 09:56:24   52:54:00:85:f0:ae   ipv4       192.168.234.21/24   lustre-demo-oss1     01:52:54:00:85:f0:ae
- 2024-11-25 09:47:58   52:54:00:a7:29:6c   ipv4       192.168.234.10/24   lustre-demo-mds0     01:52:54:00:a7:29:6c
- 2024-11-25 09:57:32   52:54:00:e5:b1:6a   ipv4       192.168.234.11/24   lustre-demo-mds1     01:52:54:00:e5:b1:6a
- 2024-11-25 09:42:17   52:54:00:f9:c2:18   ipv4       192.168.234.2/24    lustre-demo-client   01:52:54:00:f9:c2:18
-```
 
 Now you should be able to ssh into the VM guests with the provided `id_rsa` ssh key:
 
@@ -111,7 +102,10 @@ Last login: Mon Nov 25 02:06:14 2024 from 192.168.234.1
 [root@lustre-demo-mds0 ~]# 
 ```
 
-You are now free to play around in the vm. Use command `lshw` list all virtual devices in the VM.
+You are now free to play around in the vm. Use command `lshw` list all virtual devices in the VM. 
+You can use `virsh` command in the VM host to manage the VMs.
+
+## Verify the network of Lustre demo VMs
 
 Lustre servers need a hole in the firewall. This commands adds a rule to allow TCP connections to Lustre port is 988 from `lustre-demo`virtual network:
 
