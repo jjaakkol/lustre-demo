@@ -2,9 +2,12 @@
 
 prefix=234
 name=lustre-demo
+pool=$PWD/pool
 
 
 setup-network() {
+  echo "Setup network $name-$prefix"
+
 cat > libvirt/network-$prefix.xml << EOF
 <network>
   <name>lustre-demo-$prefix</name>
@@ -27,33 +30,92 @@ cat > libvirt/network-$prefix.xml << EOF
   </ip>
 </network>
 EOF
-  virsh net-define libvirt/network-$prefix.xml
-  virsh net-start lustre-demo-$prefix
+  virsh --quiet net-define libvirt/network-$prefix.xml
 }
 
 setup-guest() {
-  virsh define libvirt/lustre-demo-$1.xml
-  ( cd pool && qemu-img create -f qcow2 -F qcow2 -b lustre-demo-orig.qcow2 $name-$1.qcow2 )
-  virsh attach-disk $name-$1 $PWD/pool/$name-$1.qcow2 --persistent --type disk --target vda --driver qemu --subdriver qcow2
+  echo "Setup VM $name-$1"
+  virsh --quiet define libvirt/lustre-demo-$1.xml
+  [ -f $pool/$name-$1.qcow2 ] || ( cd $pool && qemu-img create -q -f qcow2 -F qcow2 -b lustre-demo-orig.qcow2 $name-$1.qcow2 )
+  virsh --quiet attach-disk $name-$1 $pool/$name-$1.qcow2 --persistent --type disk --target vda --driver qemu --subdriver qcow2
 }
 
-echo "Downloading lustre-demo Almalinux 8 Linux image..."
-( cd pool && wget --continue https://www.cs.helsinki.fi/u/jjaakkol/lustre-demo-orig.qcow2 )
 
-setup-network
-for guest in client mds0 mds1 oss0 oss1; do
-  setup-guest $guest
-done
+download-image() {
+orig=lustre-demo-orig.qcow2
+  if [ -f $pool/$orig ] && [ $(stat -c %s $pool/$orig) = 2098331648 ]; then
+    echo "Demo VM $orig already downloaded"
+  else
+    echo "Downloading lustre-demo Almalinux 8 Linux image..."
+    ( cd $pool && wget --continue https://www.cs.helsinki.fi/u/jjaakkol/lustre-demo-orig.qcow2 ) || exit 1
+  fi
+}
 
-for guest in client mds0 mds1 oss0 oss1; do
-  virsh start $name-$guest
-done
 
-while read ip name; do
-  echo "Waiting for $name at $ip to come up"
-  while ! ssh -o "ConnectTimeout=1" -i ./id_rsa root@$ip   ssh root@$ip "uptime; cd /root/lustre-demo && { git pull && ./configure-guest.sh $name ;}" < /dev/null
-  do
-    echo -n "."
+create() {
+  download-image
+  setup-network
+  for guest in client mds0 mds1 oss0 oss1; do
+    setup-guest $guest
   done
-done < vm-hosts
+}
+
+
+stop() {
+  for guest in client mds0 mds1 oss0 oss1; do
+    virsh --quiet destroy $name-$guest
+  done
+  virsh --quiet net-destroy lustre-demo-$prefix
+  echo "VMs and networks stopped"
+}     
+
+destroy() {
+  for guest in client mds0 mds1 oss0 oss1; do
+    rm -vf $pool/$name-$guest.qcow2
+  done
+  virsh --quiet net-undefine lustre-demo-$prefix
+  echo "VMs and networks destroyed"
+}     
+
+start() {
+  echo "Starting network lustre-demo-$prefix"
+  virsh --quiet net-start lustre-demo-$prefix
+  echo "Starting guests" 
+  for guest in client mds0 mds1 oss0 oss1; do
+    virsh --quiet start $name-$guest
+  done
+  while read ip name; do
+    echo "Waiting for $name at $ip to come up"
+    while ! ping -c 1 -W 1 $ip  > /dev/null; do
+      echo -n "."
+    done
+    sleep 1
+    ssh -i ./id_rsa root@$ip "echo Configuring $ip; cd /root/lustre-demo && { git pull -q && ./configure-guest.sh $name ;}" < /dev/null
+
+  done < vm-hosts
+}
+
+case $1 in
+start)
+        start
+        ;;
+stop)
+        stop
+        ;;
+create)
+        create
+        ;;
+destroy)
+        destroy
+        ;;
+*)
+        cat << EOF
+Usage:
+$0 start
+$0 stop
+$0 create
+$0 destroy
+EOF
+esac
+
 
