@@ -34,12 +34,12 @@ EOF
 }
 
 setup-guest() {
-  while read mac name ip; do
-    echo "Setup $name $ip $mac"
-    mac=$mac name=$name memory=8096 subnet=$subnet ./libvirt/lustre-demo-guest.template > libvirt/$name.xml
-    virsh --quiet define libvirt/$name.xml
-    [ -f $pool/$name.qcow2 ] || ( cd $pool && qemu-img create -q -f qcow2 -F qcow2 -b lustre-demo-orig.qcow2 $name.qcow2 )
-    virsh --quiet attach-disk $name $pool/$name.qcow2 --persistent --type disk --target vda --driver qemu --subdriver qcow2
+  while read mac guest ip; do
+    echo "Setup $guest $ip $mac"
+    mac=$mac network=$name-$prefix name=$guest memory=8096 ./libvirt/lustre-demo-guest.template > libvirt/$guest.xml
+    virsh --quiet define libvirt/$guest.xml
+    [ -f $pool/$guest.qcow2 ] || ( cd $pool && qemu-img create -q -f qcow2 -F qcow2 -b lustre-demo-orig.qcow2 $guest.qcow2 )
+    virsh --quiet attach-disk $guest $pool/$guest.qcow2 --persistent --type disk --target vda --driver qemu --subdriver qcow2
   done << EOF
 52:54:00:a7:29:6c $name-mds0 192.168.$prefix.10
 52:54:00:e5:b1:6a $name-mds1 192.168.$prefix.11
