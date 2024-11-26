@@ -65,6 +65,22 @@ create() {
   download-image
   setup-network
   setup-guest
+  echo "Creating fast disks"
+  for disk in vd{b..e}; do
+    truncate $pool/$name-fast-$disk.img -s 25G
+    virsh --quiet attach-disk $name-mds0 $pool/$name-fast-$disk.img --persistent --shareable --type disk --cache none --target $disk
+    virsh --quiet attach-disk $name-mds1 $pool/$name-fast-$disk.img --persistent --shareable --type disk --cache none --target $disk
+    virsh --quiet blkdeviotune $name-mds0 $disk --total-iops-sec 200 --total-bytes-sec 50M --config
+    virsh --quiet blkdeviotune $name-mds1 $disk --total-iops-sec 200 --total-bytes-sec 50M --config
+  done
+  echo "Creating slow disks"
+  for disk in vd{b..g}; do
+    truncate $pool/$name-slow-$disk.img -s 50G
+    virsh --quiet attach-disk $name-oss0 $pool/$name-slow-$disk.img --persistent --shareable --type disk --cache none --target $disk
+    virsh --quiet attach-disk $name-oss1 $pool/$name-slow-$disk.img --persistent --shareable --type disk --cache none --target $disk
+    virsh --quiet blkdeviotune $name-oss0 $disk --total-iops-sec 50 --total-bytes-sec 10M --config
+    virsh --quiet blkdeviotune $name-oss1 $disk --total-iops-sec 50 --total-bytes-sec 10M --config
+  done
 }
 
 
@@ -74,13 +90,14 @@ stop() {
   done
   virsh --quiet net-destroy $name-$prefix
   echo "VMs and networks stopped"
-}     
+}
 
 destroy() {
   for guest in client mds0 mds1 oss0 oss1; do
     virsh --quiet undefine $name-$guest --nvram
     rm -vf $pool/$name-$guest.qcow2
   done
+  rm -vf $pool/$name-*.img
   virsh --quiet net-undefine $name-$prefix
   echo "VMs and networks destroyed"
 }     
@@ -168,4 +185,13 @@ Options:
 EOF
 esac
 
+
+#!/bin/bash
+name=lustre-demo
+pool=$PWD/pool
+
+if [ ! -f $PWD/pool/README.md ]; then
+  echo "Please run $0 in the git repository directory."
+  exit 1
+fi
 
