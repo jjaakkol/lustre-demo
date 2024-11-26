@@ -10,7 +10,7 @@ setup-network() {
 
 cat > libvirt/network-$prefix.xml << EOF
 <network>
-  <name>lustre-demo-$prefix</name>
+  <name>$name-$prefix</name>
   <forward mode='nat'>
     <nat>
       <port start='1024' end='65535'/>
@@ -42,7 +42,7 @@ setup-guest() {
 
 
 download-image() {
-orig=lustre-demo-orig.qcow2
+  orig=lustre-demo-orig.qcow2
   if [ -f $pool/$orig ] && [ $(stat -c %s $pool/$orig) = 2098331648 ]; then
     echo "Demo VM $orig already downloaded"
   else
@@ -65,7 +65,7 @@ stop() {
   for guest in client mds0 mds1 oss0 oss1; do
     virsh --quiet destroy $name-$guest
   done
-  virsh --quiet net-destroy lustre-demo-$prefix
+  virsh --quiet net-destroy $name-$prefix
   echo "VMs and networks stopped"
 }     
 
@@ -73,17 +73,19 @@ destroy() {
   for guest in client mds0 mds1 oss0 oss1; do
     rm -vf $pool/$name-$guest.qcow2
   done
-  virsh --quiet net-undefine lustre-demo-$prefix
+  virsh --quiet net-undefine $name-$prefix
   echo "VMs and networks destroyed"
 }     
 
 start() {
-  echo "Starting network lustre-demo-$prefix"
-  virsh --quiet net-start lustre-demo-$prefix
+  echo "Starting network $name-$prefix"
+  virsh --quiet net-start $name-$prefix
   echo "Starting guests" 
   for guest in client mds0 mds1 oss0 oss1; do
     virsh --quiet start $name-$guest
   done
+
+  # Configure guests
   while read ip name; do
     echo "Waiting for $name at $ip to come up"
     while ! ping -c 1 -W 1 $ip  > /dev/null; do
@@ -91,9 +93,37 @@ start() {
     done
     sleep 1
     ssh -i ./id_rsa root@$ip "echo Configuring $ip; cd /root/lustre-demo && { git pull -q && ./configure-guest.sh $name ;}" < /dev/null
+  done << EOF
+192.168.$prefix.2 lustre-demo-client
+192.168.$prefix.10 lustre-demo-mds0
+192.168.$prefix.11 lustre-demo-mds1
+192.168.$prefix.20 lustre-demo-oss0
+192.168.$prefix.21 lustre-demo-oss1
+EOF
 
-  done < vm-hosts
 }
+
+while true; do case $1 in
+--name)
+        name="$2"
+        shift; shift
+        ;;
+--subnet)
+        prefix="$2"
+        shift; shift
+        ;;
+--pool)
+        pool="$2"
+        shift; shift;
+        ;;
+-*)
+        echo "$0: Don't know option $1"
+        exit 1
+        ;;
+*)
+        break
+        ;;
+esac; done
 
 case $1 in
 start)
@@ -119,6 +149,15 @@ $0 start
 $0 stop
 $0 create
 $0 destroy
+
+Options:
+  --subnet select the network subnet
+            defaut: $prefix
+  --pool   select the pooldir path 
+            default: $pool
+  --name   select the prefix name of create VMs, networks and disk images
+            default: $name
+
 EOF
 esac
 
