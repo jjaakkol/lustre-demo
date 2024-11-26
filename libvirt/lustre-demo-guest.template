@@ -1,13 +1,15 @@
+#!/bin/bash
+
+cat << ENDOFFILEREACHED
 <domain type='kvm'>
-  <name>lustre-demo-client</name>
-  <uuid>2af37048-7f60-4b87-8b56-82f83fe12fba</uuid>
+  <name>$name</name>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
       <libosinfo:os id="http://almalinux.org/almalinux/8"/>
     </libosinfo:libosinfo>
   </metadata>
-  <memory unit='KiB'>8388608</memory>
-  <currentMemory unit='KiB'>8388608</currentMemory>
+  <memory unit='MiB'>$memory</memory>
+  <currentMemory unit='MiB'>$memory</currentMemory>
   <vcpu placement='static'>4</vcpu>
   <resource>
     <partition>/machine</partition>
@@ -128,7 +130,7 @@
       <address type='pci' domain='0x0000' bus='0x04' slot='0x00' function='0x0'/>
     </controller>
     <interface type='network'>
-      <mac address='52:54:00:f9:c2:18'/>
+      <mac address='$mac'/>
       <source network='lustre-demo-234'/>
       <model type='virtio'/>
       <address type='pci' domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
@@ -185,4 +187,5 @@
   <seclabel type='dynamic' model='apparmor' relabel='yes'/>
   <seclabel type='dynamic' model='dac' relabel='yes'/>
 </domain>
+ENDOFFILEREACHED
 
