@@ -1,52 +1,27 @@
 #!/bin/bash
-pool=lustre-demo
-pooldir=$PWD/pool
+name=lustre-demo
+pool=$PWD/pool
 
 if [ ! -f $PWD/pool/README.md ]; then
   echo "Please run $0 in the git repository directory."
   exit 1
 fi
 
-echo "Creating pool $pool in $PWD"
-
-virsh pool-create-as --name $pool --type dir --target $pooldir
-
-# qcow2 image can't be shared, so we use raw disk images.
-echo "Creating SSD MDT disks"
-for disk in SSD{0..5}; do virsh vol-create-as --name $disk.img --pool $pool --format raw --capacity 25G; done
-
-echo "Creating HDD OST disks"
-for disk in HDD{0..7}; do virsh vol-create-as --name $disk.img --pool $pool --format raw --capacity 50G; done
-
-for guest in lustre-demo-mds0 lustre-demo-mds1; do
-  virsh attach-disk $guest $pooldir/SSD0.img --persistent --shareable --type disk --target vdb
-  virsh attach-disk $guest $pooldir/SSD1.img --persistent --shareable --type disk --target vdc
-  virsh attach-disk $guest $pooldir/SSD2.img --persistent --shareable --type disk --target vdd
-  virsh attach-disk $guest $pooldir/SSD3.img --persistent --shareable --type disk --target vde
-  virsh attach-disk $guest $pooldir/SSD4.img --persistent --shareable --type disk --target vdf
-  virsh attach-disk $guest $pooldir/SSD5.img --persistent --shareable --type disk --target vdg
+echo "Creating fast disks"
+for disk in vd{b..e}; do
+  truncate $pool/$name-fast-$disk.img -s 25G
+  virsh --quiet attach-disk $name-mds0 $pool/$name-fast-$disk.img --persistent --shareable --type disk --cache none --target $disk
+  virsh --quiet attach-disk $name-mds1 $pool/$name-fast-$disk.img --persistent --shareable --type disk --cache none --target $disk
+  virsh blkdeviotune $name-mds0 $disk --total-iops-sec 200 --total-bytes-sec 50M --config
+  virsh blkdeviotune $name-mds1 $disk --total-iops-sec 200 --total-bytes-sec 50M --config
 done
 
-for guest in lustre-demo-oss0 lustre-demo-oss1; do
-  virsh attach-disk $guest $pooldir/HDD0.img --persistent --shareable --type disk --target vdb
-  virsh attach-disk $guest $pooldir/HDD1.img --persistent --shareable --type disk --target vdc
-  virsh attach-disk $guest $pooldir/HDD2.img --persistent --shareable --type disk --target vdd
-  virsh attach-disk $guest $pooldir/HDD3.img --persistent --shareable --type disk --target vde
-  virsh attach-disk $guest $pooldir/HDD4.img --persistent --shareable --type disk --target vdf
-  virsh attach-disk $guest $pooldir/HDD5.img --persistent --shareable --type disk --target vdg
-done
-
-echo "Setting IO rate limits for virtual SSDs"
-for guest in lustre-demo-mds0 lustre-demo-mds1; do
-  for dev in vd{b..g}; do
-    virsh blkdeviotune $guest $dev --total-iops-sec 200 --total-bytes-sec 50M --config --live
-  done
-done
-
-echo "Setting IO rate limits for virtual HDDs"
-for guest in lustre-demo-oss0 lustre-demo-oss1; do
-  for dev in vd{b..g}; do
-    virsh blkdeviotune $guest $dev --total-iops-sec 50 --total-bytes-sec 10M --config --live
-  done
+echo "Creating slow disks"
+for disk in vd{b..g}; do
+  truncate $pool/$name-slow-$disk.img -s 50G
+  virsh --quiet attach-disk $name-oss0 $pool/$name-slow-$disk.img --persistent --shareable --type disk --cache none --target $disk
+  virsh --quiet attach-disk $name-oss1 $pool/$name-slow-$disk.img --persistent --shareable --type disk --cache none --target $disk
+  virsh blkdeviotune $name-oss0 $disk --total-iops-sec 50 --total-bytes-sec 10M --config
+  virsh blkdeviotune $name-oss1 $disk --total-iops-sec 50 --total-bytes-sec 10M --config
 done
 
