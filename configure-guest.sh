@@ -13,5 +13,6 @@ cp -a known_hosts /etc/ssh/ssh_known_hosts
 rm /etc/machine-id
 systemd-machine-id-setup
 genhostid 2>/dev/null
+cp heartbeat-agent-ZFS /usr/lib/ocf/resource.d/lustre/
 #rm -f /root/.bash_history
 echo "Configured guest $guest"
